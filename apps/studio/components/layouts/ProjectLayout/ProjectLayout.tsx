@@ -1,4 +1,7 @@
 import { useParams } from 'common/hooks'
+import ProjectAPIDocs from 'components/interfaces/ProjectAPIDocs/ProjectAPIDocs'
+import AISettingsModal from 'components/ui/AISettingsModal'
+import Connecting from 'components/ui/Loading/Loading'
 import ResourceExhaustionWarningBanner from 'components/ui/ResourceExhaustionWarningBanner/ResourceExhaustionWarningBanner'
 import { useFlag, useSelectedOrganization, useSelectedProject, withAuth } from 'hooks'
 import { IS_PLATFORM, PROJECT_STATUS } from 'lib/constants'
@@ -18,8 +21,6 @@ import { ProjectContextProvider } from './ProjectContext'
 import ProjectPausedState from './ProjectPausedState'
 import RestoringState from './RestoringState'
 import UpgradingState from './UpgradingState'
-import Connecting from 'components/ui/Loading/Loading'
-import ProjectAPIDocs from 'components/interfaces/ProjectAPIDocs/ProjectAPIDocs'
 
 // [Joshen] This is temporary while we unblock users from managing their project
 // if their project is not responding well for any reason. Eventually needs a bit of an overhaul
@@ -30,7 +31,10 @@ const routesToIgnoreProjectDetailsRequest = [
   '/project/[ref]/settings/infrastructure',
 ]
 
-const routesToIgnoreDBConnection = ['/project/[ref]/branches']
+const routesToIgnoreDBConnection = [
+  '/project/[ref]/branches',
+  '/project/[ref]/database/backups/scheduled',
+]
 
 const routesToIgnorePostgrestConnection = [
   '/project/[ref]/reports',
@@ -117,6 +121,7 @@ const ProjectLayout = ({
         </div>
 
         <EnableBranchingModal />
+        <AISettingsModal />
         <ProjectAPIDocs />
       </ProjectContextProvider>
     </AppLayout>
@@ -165,10 +170,11 @@ const ContentWrapper = ({ isLoading, children }: ContentWrapperProps) => {
   const router = useRouter()
   const selectedProject = useSelectedProject()
 
+  const isSettingsPages = router.pathname.includes('/project/[ref]/settings')
+  const isVaultPage = router.pathname === '/project/[ref]/settings/vault'
+
   const requiresDbConnection: boolean =
-    (!router.pathname.includes('/project/[ref]/settings') &&
-      !routesToIgnoreDBConnection.includes(router.pathname)) ||
-    router.pathname === '/project/[ref]/settings/vault'
+    (!isSettingsPages && !routesToIgnoreDBConnection.includes(router.pathname)) || isVaultPage
   const requiresPostgrestConnection = !routesToIgnorePostgrestConnection.includes(router.pathname)
   const requiresProjectDetails = !routesToIgnoreProjectDetailsRequest.includes(router.pathname)
 
@@ -265,6 +271,7 @@ export const ProjectLayoutNonBlocking = ({
         </div>
 
         <EnableBranchingModal />
+        <AISettingsModal />
         <ProjectAPIDocs />
       </ProjectContextProvider>
     </AppLayout>
