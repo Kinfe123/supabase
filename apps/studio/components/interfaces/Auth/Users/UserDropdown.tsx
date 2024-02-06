@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconMail,
-  IconMoreHorizontal,
+  IconMoreVertical,
   IconShieldOff,
   IconTrash,
   Modal,
@@ -125,15 +125,9 @@ const UserDropdown = ({ user, canRemoveUser, canRemoveMFAFactors }: UserDropdown
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger>
-          <Button
-            asChild
-            type="text"
-            icon={<IconMoreHorizontal />}
-            loading={isLoading}
-            className="hover:border-gray-500 flex"
-          >
-            <span />
+        <DropdownMenuTrigger asChild>
+          <Button type="text" loading={isLoading} className="hover:border-gray-500 flex">
+            <IconMoreVertical />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
@@ -231,6 +225,7 @@ const UserDropdown = ({ user, canRemoveUser, canRemoveMFAFactors }: UserDropdown
         visible={isDeleteModalOpen}
         header="Confirm to delete"
         buttonLabel="Delete"
+        buttonLoadingLabel="Delete"
         onSelectCancel={() => setIsDeleteModalOpen(false)}
         onSelectConfirm={() => {
           handleDelete()

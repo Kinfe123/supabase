@@ -46,11 +46,19 @@ Under `Redirect URIs`:
 - Click `Add`
 - Click `Save` at the bottom
 
-## Enter your Spotify credentials into your Supabase Project
+## Enter your Spotify credentials into your Supabase project
 
 <SocialProviderSettingsSupabase provider="Spotify" />
 
 ## Add login code to your client app
+
+The following outlines the steps to sign in using Spotify with Supabase Auth.
+
+1. Call the signin method from the client library.
+1. The user is redirected to the Spotify login page.
+1. After completing the sign-in process, the user will be redirected to your app with an error that says the email address needs to be confirmed. Simultaneously the user receives a confirmation email from Supabase Auth.
+1. The user clicks the confirmation link in the email.
+1. The user is brought back to the app and is now signed in.
 
 <Tabs
   scrollable
@@ -74,11 +82,11 @@ async function signInWithSpotify() {
 </TabPanel>
 <TabPanel id="kotlin" label="Kotlin">
 
-When your user signs in, call [loginWith(Provider)](/docs/reference/kotlin/auth-signinwithoauth) with `Spotify` as the `Provider`:
+When your user signs in, call [signInWith(Provider)](/docs/reference/kotlin/auth-signinwithoauth) with `Spotify` as the `Provider`:
 
 ```kotlin
 suspend fun signInWithSpotify() {
-	supabase.gotrue.loginWith(Spotify)
+	supabase.auth.signInWith(Spotify)
 }
 ```
 
@@ -109,7 +117,7 @@ When your user signs out, call [logout()](/docs/reference/kotlin/auth-signout) t
 
 ```kotlin
 suspend fun signOut() {
-	supabase.gotrue.logout()
+	supabase.auth.signOut()
 }
 ```
 

@@ -95,7 +95,7 @@ const RestartServerButton = () => {
   return (
     <>
       <Tooltip.Root delayDuration={0}>
-        <Tooltip.Trigger>
+        <Tooltip.Trigger asChild>
           <div className="flex items-center">
             <Button
               type="default"
@@ -150,8 +150,8 @@ const RestartServerButton = () => {
                   {!canRestartProject
                     ? 'You need additional permissions to restart this project'
                     : !isProjectActive
-                    ? 'Unable to restart project as project is not active'
-                    : ''}
+                      ? 'Unable to restart project as project is not active'
+                      : ''}
                 </span>
               </div>
             </Tooltip.Content>

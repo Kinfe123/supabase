@@ -27,7 +27,7 @@ import DateRangePicker from 'components/to-be-cleaned/DateRangePicker'
 import Loading from 'components/ui/Loading'
 import NoPermission from 'components/ui/NoPermission'
 import { useCheckPermissions, useIsFeatureEnabled } from 'hooks'
-import { METRICS, METRIC_CATEGORIES, TIME_PERIODS_REPORTS } from 'lib/constants'
+import { METRICS, METRIC_CATEGORIES, TIME_PERIODS_REPORTS } from 'lib/constants/metrics'
 import { uuidv4 } from 'lib/helpers'
 import { useProfile } from 'lib/profile'
 import { useProjectContentStore } from 'stores/projectContentStore'
@@ -361,8 +361,8 @@ const Reports = () => {
 
           {canUpdateReport ? (
             <DropdownMenu>
-              <DropdownMenuTrigger>
-                <Button asChild type="default" iconRight={<IconSettings />}>
+              <DropdownMenuTrigger asChild>
+                <Button type="default" iconRight={<IconSettings />}>
                   <span>Add / Remove charts</span>
                 </Button>
               </DropdownMenuTrigger>
@@ -401,8 +401,8 @@ const Reports = () => {
         <div className="flex min-h-full items-center justify-center rounded border-2 border-dashed p-16 border-default">
           {canUpdateReport ? (
             <DropdownMenu>
-              <DropdownMenuTrigger>
-                <Button asChild type="default" iconRight={<IconPlus />}>
+              <DropdownMenuTrigger asChild>
+                <Button type="default" iconRight={<IconPlus />}>
                   <span>
                     {config.layout.length <= 0 ? 'Add your first chart' : 'Add another chart'}
                   </span>

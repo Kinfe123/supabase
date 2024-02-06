@@ -25,7 +25,11 @@ export async function truncateTableRow({
 }: TableRowTruncateVariables) {
   const sql = getTableRowTruncateSql({ table })
 
-  const { result } = await executeSql({ projectRef, connectionString, sql })
+  const { result } = await executeSql({
+    projectRef,
+    connectionString,
+    sql,
+  })
 
   return result
 }

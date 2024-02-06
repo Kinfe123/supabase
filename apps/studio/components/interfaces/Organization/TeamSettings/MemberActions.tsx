@@ -45,7 +45,6 @@ const MemberActions = ({ member, roles }: MemberActionsProps) => {
     permissions ?? []
   )
 
-  const isExpired = isInviteExpired(member?.invited_at ?? '')
   const isPendingInviteAcceptance = member.invited_id
 
   const roleId = member.role_ids?.[0] ?? -1
@@ -153,15 +152,9 @@ const MemberActions = ({ member, roles }: MemberActionsProps) => {
     <>
       <div className="flex items-center justify-end">
         <DropdownMenu>
-          <DropdownMenuTrigger>
-            <Button
-              asChild
-              type="text"
-              disabled={isLoading}
-              loading={isLoading}
-              icon={<IconMoreHorizontal />}
-            >
-              <span></span>
+          <DropdownMenuTrigger asChild>
+            <Button type="text" disabled={isLoading} loading={isLoading}>
+              <IconMoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="bottom" align="end">

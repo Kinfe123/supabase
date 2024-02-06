@@ -200,7 +200,6 @@ const uiConfig = ui({
               display: 'block',
               position: 'relative',
               paddingLeft: '1rem',
-              marginBottom: '2rem',
             },
             'ol>li::before': {
               position: 'absolute',
@@ -393,7 +392,7 @@ const uiConfig = ui({
       // shadcn defaults END
     },
   },
-  plugins: [require('@tailwindcss/typography'), require('tailwindcss-animate')],
+  plugins: [require('@tailwindcss/typography'), require('tailwindcss-animate'), require('@tailwindcss/line-clamp')],
 })
 
 function arrayMergeFn(destinationArray, sourceArray) {

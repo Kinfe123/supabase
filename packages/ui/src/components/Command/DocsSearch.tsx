@@ -14,9 +14,18 @@ import {
   IconSearch,
   useCommandMenu,
 } from 'ui'
-import { CommandGroup, CommandItem, CommandLabel, TextHighlighter } from './Command.utils'
+import {
+  CommandGroup,
+  CommandItem,
+  CommandLabel,
+  FORCE_MOUNT_ITEM,
+  TextHighlighter,
+} from './Command.utils'
+import { useRouter } from 'next/router'
 
 const NUMBER_SOURCES = 2
+
+const FUNCTIONS_URL = '/functions/v1/'
 
 const questions = [
   'How do I get started with Supabase?',
@@ -30,6 +39,7 @@ const questions = [
 export enum PageType {
   Markdown = 'markdown',
   Reference = 'reference',
+  Integration = 'partner-integration',
   GithubDiscussion = 'github-discussions',
 }
 
@@ -46,21 +56,6 @@ export interface Page {
   subtitle: string | null
   description: string | null
   sections: PageSection[]
-}
-
-function removeDoubleQuotes(inputString: string): string {
-  // Use the replace method with a regular expression to remove double quotes
-  return inputString.replace(/"/g, '')
-}
-
-const getDocsUrl = () => {
-  if (!process.env.NEXT_PUBLIC_SITE_URL || !process.env.NEXT_PUBLIC_LOCAL_SUPABASE) {
-    return 'https://supabase.com/docs'
-  }
-
-  const isLocal =
-    process.env.NEXT_PUBLIC_SITE_URL.includes('localhost') || process.env.NEXT_PUBLIC_LOCAL_SUPABASE
-  return isLocal ? 'http://localhost:3001/docs' : 'https://supabase.com/docs'
 }
 
 type SearchState =
@@ -175,7 +170,12 @@ function reducer(state: SearchState, action: Action): SearchState {
           : {
               status: 'loading',
               key: action.key,
-              staleResults: [],
+              staleResults:
+                'results' in state
+                  ? state.results
+                  : 'staleResults' in state
+                  ? state.staleResults
+                  : [],
             }
       }
       return allSourcesLoaded
@@ -193,7 +193,8 @@ function reducer(state: SearchState, action: Action): SearchState {
       return {
         status: 'loading',
         key: action.key,
-        staleResults: 'results' in state ? state.results : [],
+        staleResults:
+          'results' in state ? state.results : 'staleResults' in state ? state.staleResults : [],
       }
     case 'reset':
       return {
@@ -218,9 +219,43 @@ function reducer(state: SearchState, action: Action): SearchState {
 const DocsSearch = () => {
   const [state, dispatch] = useReducer(reducer, { status: 'initial', key: 0 })
   const supabaseClient = useSupabaseClient()
-  const { isLoading, setIsLoading, search, setSearch, inputRef } = useCommandMenu()
+  const { search, setSearch, inputRef, site, setIsOpen } = useCommandMenu()
   const key = useRef(0)
   const initialLoad = useRef(true)
+  const router = useRouter()
+
+  async function openLink(pageType: PageType, link: string) {
+    switch (pageType) {
+      case PageType.Markdown:
+      case PageType.Reference:
+        if (site === 'docs') {
+          await router.push(link)
+          return setIsOpen(false)
+        } else if (site === 'website') {
+          await router.push(`/docs${link}`)
+          setIsOpen(false)
+        } else {
+          window.open(`https://supabase.com/docs${link}`, '_blank')
+          setIsOpen(false)
+        }
+        break
+      case PageType.Integration:
+        if (site === 'website') {
+          router.push(link)
+          setIsOpen(false)
+        } else {
+          window.open(`https://supabase.com${link}`, '_blank')
+          setIsOpen(false)
+        }
+        break
+      case PageType.GithubDiscussion:
+        window.open(link, '_blank')
+        setIsOpen(false)
+        break
+      default:
+        throw new Error(`Unknown page type '${pageType}'`)
+    }
+  }
 
   const hasResults =
     state.status === 'fullResults' ||
@@ -229,40 +264,57 @@ const DocsSearch = () => {
 
   const handleSearch = useCallback(
     async (query: string) => {
-      setIsLoading(true)
-
       key.current += 1
       const localKey = key.current
       dispatch({ type: 'newSearchDispatched', key: localKey })
 
       let sourcesLoaded = 0
 
-      const sources = ['search-fts', 'search-embeddings']
-      sources.forEach((source) => {
-        supabaseClient.functions
-          .invoke(source, { body: { query } })
-          .then(({ data: results, error }) => {
-            sourcesLoaded += 1
-            if (error) {
-              dispatch({
-                type: 'errored',
-                key: localKey,
-                sourcesLoaded,
-                message: error.message ?? '',
-              })
-            } else {
-              dispatch({
-                type: 'resultsReturned',
-                key: localKey,
-                sourcesLoaded,
-                results,
-              })
-            }
-            if (sourcesLoaded === NUMBER_SOURCES) {
-              setIsLoading(false)
-            }
+      supabaseClient.rpc('docs_search_fts', { query: query.trim() }).then(({ data, error }) => {
+        sourcesLoaded += 1
+        if (error || !Array.isArray(data)) {
+          dispatch({
+            type: 'errored',
+            key: localKey,
+            sourcesLoaded,
+            message: error?.message ?? '',
           })
+        } else {
+          dispatch({
+            type: 'resultsReturned',
+            key: localKey,
+            sourcesLoaded,
+            results: data,
+          })
+        }
       })
+
+      fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}${FUNCTIONS_URL}search-embeddings`, {
+        method: 'POST',
+        body: JSON.stringify({ query }),
+      })
+        .then((response) => response.json())
+        .then((results) => {
+          if (!Array.isArray(results)) {
+            throw Error("didn't get expected results array")
+          }
+          sourcesLoaded += 1
+          dispatch({
+            type: 'resultsReturned',
+            key: localKey,
+            sourcesLoaded,
+            results,
+          })
+        })
+        .catch((error) => {
+          sourcesLoaded += 1
+          dispatch({
+            type: 'errored',
+            key: localKey,
+            sourcesLoaded,
+            message: error.message ?? '',
+          })
+        })
     },
     [supabaseClient]
   )
@@ -277,27 +329,25 @@ const DocsSearch = () => {
     })
   }
 
-  const debouncedSearch = useMemo(() => debounce(handleSearch, 1000), [handleSearch])
+  const debouncedSearch = useMemo(() => debounce(handleSearch, 150), [handleSearch])
 
   useEffect(() => {
-    initialLoad.current = false
-    // search immediately if there is a search term on initial load
-    if (search) {
-      handleSearch(search)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!search) {
-      // Clear search results if user deletes query
-      // and cancel any pending debounced searches
+    if (initialLoad.current) {
+      // On first navigation into 'docs search' page, search immediately
+      if (search) {
+        handleSearch(search)
+      }
+      initialLoad.current = false
+    } else if (search) {
+      // Else if user is typing, debounce search
+      debouncedSearch(search)
+    } else {
+      // If user clears search, reset results
       debouncedSearch.cancel()
       key.current += 1
       dispatch({ type: 'reset', key: key.current })
-    } else if (!initialLoad.current) {
-      debouncedSearch(search)
     }
-  }, [search])
+  }, [search, handleSearch, debouncedSearch])
 
   // Immediately run search if user presses enter
   // and abort any debounced searches that are waiting
@@ -365,14 +415,12 @@ const DocsSearch = () => {
           return (
             <CommandGroup
               heading=""
-              key={`${page.title}-group-index-${i}`}
-              // Adding the search term here is a hack to prevent the cmdk menu
-              // filter from filtering out search results
-              value={`${search}-${page.title}-group-index-${i}`}
+              key={`${page.path}-group`}
+              value={`${FORCE_MOUNT_ITEM}--${page.title}-group-index-${i}`}
             >
               <CommandItem
-                key={`${page.title}-item-index-${i}`}
-                value={`${search}-${removeDoubleQuotes(page.title)}-item-index-${i}`}
+                key={`${page.path}-item`}
+                value={`${FORCE_MOUNT_ITEM}--${page.title}-item-index-${i}`}
                 type="block-link"
                 onSelect={() => {
                   openLink(page.type, formatPageUrl(page))
@@ -384,9 +432,12 @@ const DocsSearch = () => {
                     <CommandLabel>
                       <TextHighlighter text={page.title} query={search} />
                     </CommandLabel>
-                    {page.description && (
+                    {(page.description || page.subtitle) && (
                       <div className="text-xs text-foreground-muted">
-                        <TextHighlighter text={page.description} query={search} />
+                        <TextHighlighter
+                          text={page.description! || page.subtitle!}
+                          query={search}
+                        />
                       </div>
                     )}
                   </div>
@@ -402,10 +453,8 @@ const DocsSearch = () => {
                       onSelect={() => {
                         openLink(page.type, formatSectionUrl(page, section))
                       }}
-                      key={`${page.title}__${section.heading}-item-index-${i}`}
-                      value={`${search}-${removeDoubleQuotes(page.title)}__${removeDoubleQuotes(
-                        section.heading ?? ''
-                      )}-item-index-${i}`}
+                      key={`${page.path}__${section.heading}-item`}
+                      value={`${FORCE_MOUNT_ITEM}--${page.title}__${section.heading}-item-index-${i}`}
                       type="block-link"
                     >
                       <div className="grow flex gap-3 items-center">
@@ -439,7 +488,7 @@ const DocsSearch = () => {
             const key = question.replace(/\s+/g, '_')
             return (
               <CommandItem
-                disabled={isLoading}
+                disabled={hasResults}
                 onSelect={() => {
                   if (!search) {
                     handleSearch(question)
@@ -489,11 +538,10 @@ const DocsSearch = () => {
 export default DocsSearch
 
 export function formatPageUrl(page: Page) {
-  const docsUrl = getDocsUrl()
   switch (page.type) {
     case PageType.Markdown:
     case PageType.Reference:
-      return `${docsUrl}${page.path}`
+    case PageType.Integration:
     case PageType.GithubDiscussion:
       return page.path
     default:
@@ -508,6 +556,9 @@ export function formatSectionUrl(page: Page, section: PageSection) {
       return `${formatPageUrl(page)}#${section.slug ?? ''}`
     case PageType.Reference:
       return `${formatPageUrl(page)}/${section.slug ?? ''}`
+    case PageType.Integration:
+      // [Charis] Markdown headings on integrations pages don't have slugs yet
+      return formatPageUrl(page)
     default:
       throw new Error(`Unknown page type '${page.type}'`)
   }
@@ -517,6 +568,7 @@ export function getPageIcon(page: Page) {
   switch (page.type) {
     case PageType.Markdown:
     case PageType.Reference:
+    case PageType.Integration:
       return <IconBook strokeWidth={1.5} className="!mr-0 !w-4 !h-4" />
     case PageType.GithubDiscussion:
       return <IconGitHub strokeWidth={1.5} className="!mr-0 !w-4 !h-4" />
@@ -529,22 +581,11 @@ export function getPageSectionIcon(page: Page) {
   switch (page.type) {
     case PageType.Markdown:
     case PageType.Reference:
+    case PageType.Integration:
       return <IconHash strokeWidth={1.5} className="!mr-0 !w-4 !h-4" />
     case PageType.GithubDiscussion:
       return <IconMessageSquare strokeWidth={1.5} className="!mr-0 !w-4 !h-4" />
     default:
       throw new Error(`Unknown page type '${page.type}'`)
-  }
-}
-
-export function openLink(pageType: PageType, link: string) {
-  switch (pageType) {
-    case PageType.Markdown:
-    case PageType.Reference:
-      return window.location.assign(link)
-    case PageType.GithubDiscussion:
-      return window.open(link, '_blank')
-    default:
-      throw new Error(`Unknown page type '${pageType}'`)
   }
 }

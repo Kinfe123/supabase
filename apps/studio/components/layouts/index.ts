@@ -1,14 +1,11 @@
-import AccountLayout, { AccountLayoutWithoutAuth } from './AccountLayout/AccountLayout'
+import AccountLayout from './AccountLayout/AccountLayout'
 import AuthLayout from './AuthLayout/AuthLayout'
 import BillingLayout from './BillingLayout'
 import DatabaseLayout from './DatabaseLayout/DatabaseLayout'
 import DocsLayout from './DocsLayout/DocsLayout'
 import LogsLayout from './LogsLayout/LogsLayout'
 import OrganizationLayout from './OrganizationLayout'
-import ProjectLayout, {
-  ProjectLayoutNonBlocking,
-  ProjectLayoutWithAuth,
-} from './ProjectLayout/ProjectLayout'
+import ProjectLayout, { ProjectLayoutWithAuth } from './ProjectLayout/ProjectLayout'
 import SettingsLayout from './ProjectSettingsLayout/SettingsLayout'
 import ReportsLayout from './ReportsLayout/ReportsLayout'
 import SQLEditorLayout from './SQLEditorLayout/SQLEditorLayout'
@@ -21,7 +18,6 @@ import WizardLayout, { WizardLayoutWithoutAuth } from './WizardLayout'
 
 export {
   AccountLayout,
-  AccountLayoutWithoutAuth,
   AuthLayout,
   BillingLayout,
   DatabaseLayout,
@@ -29,7 +25,6 @@ export {
   ForgotPasswordLayout,
   LogsLayout,
   OrganizationLayout,
-  ProjectLayoutNonBlocking,
   ProjectLayoutWithAuth,
   ReportsLayout,
   SQLEditorLayout,
